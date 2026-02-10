@@ -1,5 +1,5 @@
 import streamlit as st
-import pickle
+import joblib
 import pandas as pd
 
 # ------------------ PAGE CONFIG ------------------
@@ -11,7 +11,7 @@ st.set_page_config(
 
 # ------------------ LOAD MODEL ------------------
 with open("best_decision_tree_model.pkl", "rb") as file:
-    model = pickle.load(file)
+    model = joblib.load(file)
 
 # ------------------ TITLE ------------------
 st.title("🩺 Health & Lifestyle Disease Risk Prediction")
