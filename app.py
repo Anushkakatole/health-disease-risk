@@ -1,47 +1,46 @@
 import streamlit as st
-import joblib
 import pandas as pd
+import joblib
 
-# ------------------ PAGE CONFIG ------------------
+# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
     page_title="Health Disease Risk Predictor",
     page_icon="🩺",
     layout="centered"
 )
 
-# ------------------ LOAD MODEL ------------------
-with open("best_decision_tree_model.pkl", "rb") as file:
-    model = joblib.load(file)
+# ---------------- LOAD MODEL ----------------
+model = joblib.load("best_decision_tree_model.pkl")
 
-# ------------------ TITLE ------------------
+# ---------------- TITLE ----------------
 st.title("🩺 Health & Lifestyle Disease Risk Prediction")
-st.write("Enter your health and lifestyle details to assess disease risk.")
+st.write("Predict disease risk based on lifestyle and health indicators.")
 
-# ------------------ INPUTS ------------------
-user_id = 0  # Dummy ID (model requires this)
+# ---------------- INPUTS ----------------
+user_id = 0  # dummy ID required by trained model
 
-age = st.number_input("Age", 1, 120, 30)
+age = st.number_input("Age", min_value=1, max_value=120, value=30)
 gender = st.selectbox("Gender", ["Male", "Female"])
-bmi = st.number_input("BMI", 10.0, 60.0, 22.5)
-daily_steps = st.number_input("Daily Steps", 0, 50000, 6000)
-sleep_hours = st.number_input("Sleep Hours", 0.0, 24.0, 7.0)
-water_intake_l = st.number_input("Water Intake (Liters)", 0.0, 10.0, 2.5)
-calories_consumed = st.number_input("Calories Consumed", 0, 6000, 2200)
+bmi = st.number_input("BMI", min_value=10.0, max_value=60.0, value=22.5)
+daily_steps = st.number_input("Daily Steps", min_value=0, max_value=50000, value=6000)
+sleep_hours = st.number_input("Sleep Hours", min_value=0.0, max_value=24.0, value=7.0)
+water_intake_l = st.number_input("Water Intake (Liters)", min_value=0.0, max_value=10.0, value=2.5)
+calories_consumed = st.number_input("Calories Consumed", min_value=0, max_value=6000, value=2200)
 smoker = st.selectbox("Smoker", ["No", "Yes"])
 alcohol = st.selectbox("Alcohol Consumption", ["No", "Yes"])
-resting_hr = st.number_input("Resting Heart Rate", 30, 200, 72)
-systolic_bp = st.number_input("Systolic BP", 80, 200, 120)
-diastolic_bp = st.number_input("Diastolic BP", 50, 130, 80)
-cholesterol = st.number_input("Cholesterol Level", 100, 400, 180)
+resting_hr = st.number_input("Resting Heart Rate", min_value=30, max_value=200, value=72)
+systolic_bp = st.number_input("Systolic BP", min_value=80, max_value=200, value=120)
+diastolic_bp = st.number_input("Diastolic BP", min_value=50, max_value=130, value=80)
+cholesterol = st.number_input("Cholesterol Level", min_value=100, max_value=400, value=180)
 family_history = st.selectbox("Family History of Disease", ["No", "Yes"])
 
-# ------------------ ENCODING ------------------
+# ---------------- ENCODING ----------------
 gender = 1 if gender == "Male" else 0
 smoker = 1 if smoker == "Yes" else 0
 alcohol = 1 if alcohol == "Yes" else 0
 family_history = 1 if family_history == "Yes" else 0
 
-# ------------------ INPUT DATAFRAME ------------------
+# ---------------- INPUT DATAFRAME ----------------
 input_df = pd.DataFrame([{
     "id": user_id,
     "age": age,
@@ -60,64 +59,57 @@ input_df = pd.DataFrame([{
     "family_history": family_history
 }])
 
-# ------------------ PREDICTION ------------------
+# ---------------- PREDICTION ----------------
 if st.button("🔍 Predict Disease Risk"):
     prediction = model.predict(input_df)[0]
 
-    # Try probability (if supported)
-    risk_score = None
+    risk_prob = None
     if hasattr(model, "predict_proba"):
-        risk_score = model.predict_proba(input_df)[0][1]
+        risk_prob = model.predict_proba(input_df)[0][1]
 
     if prediction == 1:
         st.error("⚠️ High Disease Risk Detected")
 
-        if risk_score:
-            st.subheader("📊 Risk Level")
-            st.progress(int(risk_score * 100))
-            st.write(f"Estimated Risk: **{int(risk_score * 100)}%**")
+        if risk_prob is not None:
+            st.subheader("📊 Estimated Risk Level")
+            st.progress(int(risk_prob * 100))
+            st.write(f"Risk Probability: **{int(risk_prob * 100)}%**")
 
-        # --------- CONTRIBUTING FACTORS ---------
         st.subheader("🔍 Possible Contributing Factors")
         factors = []
 
         if bmi > 25:
             factors.append("High BMI")
-        if smoker == 1:
-            factors.append("Smoking Habit")
-        if alcohol == 1:
-            factors.append("Alcohol Consumption")
+        if smoker:
+            factors.append("Smoking habit")
+        if alcohol:
+            factors.append("Alcohol consumption")
         if sleep_hours < 6:
-            factors.append("Low Sleep Duration")
+            factors.append("Low sleep duration")
         if systolic_bp > 130 or diastolic_bp > 85:
-            factors.append("High Blood Pressure")
+            factors.append("High blood pressure")
         if cholesterol > 200:
-            factors.append("High Cholesterol")
+            factors.append("High cholesterol")
 
-        if factors:
-            for f in factors:
-                st.warning(f"• {f}")
-        else:
-            st.info("No major lifestyle red flags detected.")
+        for factor in factors:
+            st.warning(f"• {factor}")
 
-        # --------- RECOMMENDATIONS ---------
-        st.subheader("✅ Health Recommendations")
+        st.subheader("✅ Recommended Actions")
         st.markdown("""
-        - 🥗 Eat a balanced, low-fat diet  
+        - 🥗 Follow a balanced, low-fat diet  
         - 🚶 Walk **7,000–10,000 steps daily**  
-        - 🛌 Sleep at least **7–8 hours**  
-        - 💧 Drink enough water  
-        - 🚭 Quit smoking & limit alcohol  
+        - 🛌 Sleep **7–8 hours** per night  
+        - 💧 Stay hydrated  
+        - 🚭 Avoid smoking & reduce alcohol  
         - 🩺 Schedule regular medical checkups  
         """)
 
     else:
         st.success("✅ Low Disease Risk")
         st.balloons()
-        st.markdown("Keep maintaining a healthy lifestyle! 🌱")
+        st.write("Keep maintaining a healthy lifestyle 🌱")
 
-    # --------- DISCLAIMER ---------
     st.caption(
-        "⚠️ Disclaimer: This result is generated by a machine learning model and "
+        "⚠️ Disclaimer: This prediction is generated by a machine learning model and "
         "is not a substitute for professional medical advice."
     )
