@@ -2,56 +2,114 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-st.set_page_config(page_title="Health Disease Risk Predictor", layout="centered")
+# ---------------- PAGE CONFIG ----------------
+st.set_page_config(
+    page_title="Health Disease Risk Predictor",
+    page_icon="🩺",
+    layout="centered"
+)
 
-st.title("🩺 Health Disease Risk Predictor")
-st.write("Predict health disease risk based on lifestyle and health indicators.")
+# ---------------- LOAD MODEL ----------------
+model = joblib.load("best_decision_tree_model.pkl")
 
-# Load model
-@st.cache_resource
-def load_model():
-    return joblib.load("model.pkl")
+# ---------------- TITLE ----------------
+st.title("🩺 Health & Lifestyle Disease Risk Prediction")
+st.write("Predict disease risk based on lifestyle and health indicators.")
 
-model = load_model()
-
-st.header("Enter Health Details")
+# ---------------- INPUTS ----------------
+user_id = 0  # dummy ID required by trained model
 
 age = st.number_input("Age", min_value=1, max_value=120, value=30)
-bmi = st.number_input("BMI", min_value=10.0, max_value=60.0, value=22.0)
-bp = st.number_input("Blood Pressure", min_value=50, max_value=200, value=120)
-glucose = st.number_input("Glucose Level", min_value=50, max_value=300, value=100)
-cholesterol = st.number_input("Cholesterol", min_value=100, max_value=400, value=180)
-smoking = st.selectbox("Smoking", ["No", "Yes"])
+gender = st.selectbox("Gender", ["Male", "Female"])
+bmi = st.number_input("BMI", min_value=10.0, max_value=60.0, value=22.5)
+daily_steps = st.number_input("Daily Steps", min_value=0, max_value=50000, value=6000)
+sleep_hours = st.number_input("Sleep Hours", min_value=0.0, max_value=24.0, value=7.0)
+water_intake_l = st.number_input("Water Intake (Liters)", min_value=0.0, max_value=10.0, value=2.5)
+calories_consumed = st.number_input("Calories Consumed", min_value=0, max_value=6000, value=2200)
+smoker = st.selectbox("Smoker", ["No", "Yes"])
 alcohol = st.selectbox("Alcohol Consumption", ["No", "Yes"])
-physical_activity = st.selectbox("Physical Activity", ["Low", "Moderate", "High"])
+resting_hr = st.number_input("Resting Heart Rate", min_value=30, max_value=200, value=72)
+systolic_bp = st.number_input("Systolic BP", min_value=80, max_value=200, value=120)
+diastolic_bp = st.number_input("Diastolic BP", min_value=50, max_value=130, value=80)
+cholesterol = st.number_input("Cholesterol Level", min_value=100, max_value=400, value=180)
+family_history = st.selectbox("Family History of Disease", ["No", "Yes"])
 
-if st.button("Predict Risk"):
-    input_data = pd.DataFrame({
-        "age": [age],
-        "bmi": [bmi],
-        "bp": [bp],
-        "glucose": [glucose],
-        "cholesterol": [cholesterol],
-        "smoking": [1 if smoking == "Yes" else 0],
-        "alcohol": [1 if alcohol == "Yes" else 0],
-        "physical_activity": [
-            0 if physical_activity == "Low" else
-            1 if physical_activity == "Moderate" else 2
-        ]
-    })
+# ---------------- ENCODING ----------------
+gender = 1 if gender == "Male" else 0
+smoker = 1 if smoker == "Yes" else 0
+alcohol = 1 if alcohol == "Yes" else 0
+family_history = 1 if family_history == "Yes" else 0
 
-    prediction = model.predict(input_data)[0]
+# ---------------- INPUT DATAFRAME ----------------
+input_df = pd.DataFrame([{
+    "id": user_id,
+    "age": age,
+    "gender": gender,
+    "bmi": bmi,
+    "daily_steps": daily_steps,
+    "sleep_hours": sleep_hours,
+    "water_intake_l": water_intake_l,
+    "calories_consumed": calories_consumed,
+    "smoker": smoker,
+    "alcohol": alcohol,
+    "resting_hr": resting_hr,
+    "systolic_bp": systolic_bp,
+    "diastolic_bp": diastolic_bp,
+    "cholesterol": cholesterol,
+    "family_history": family_history
+}])
+
+# ---------------- PREDICTION ----------------
+if st.button("🔍 Predict Disease Risk"):
+    prediction = model.predict(input_df)[0]
+
+    risk_prob = None
+    if hasattr(model, "predict_proba"):
+        risk_prob = model.predict_proba(input_df)[0][1]
 
     if prediction == 1:
         st.error("⚠️ High Disease Risk Detected")
-        st.write("Recommendations:")
+
+        if risk_prob is not None:
+            st.subheader("📊 Estimated Risk Level")
+            st.progress(int(risk_prob * 100))
+            st.write(f"Risk Probability: **{int(risk_prob * 100)}%**")
+
+        st.subheader("🔍 Possible Contributing Factors")
+        factors = []
+
+        if bmi > 25:
+            factors.append("High BMI")
+        if smoker:
+            factors.append("Smoking habit")
+        if alcohol:
+            factors.append("Alcohol consumption")
+        if sleep_hours < 6:
+            factors.append("Low sleep duration")
+        if systolic_bp > 130 or diastolic_bp > 85:
+            factors.append("High blood pressure")
+        if cholesterol > 200:
+            factors.append("High cholesterol")
+
+        for factor in factors:
+            st.warning(f"• {factor}")
+
+        st.subheader("✅ Recommended Actions")
         st.markdown("""
-        - Maintain a balanced diet  
-        - Exercise regularly  
-        - Avoid smoking & alcohol  
-        - Monitor BP, glucose, cholesterol  
-        - Consult a doctor  
+        - 🥗 Follow a balanced, low-fat diet  
+        - 🚶 Walk **7,000–10,000 steps daily**  
+        - 🛌 Sleep **7–8 hours** per night  
+        - 💧 Stay hydrated  
+        - 🚭 Avoid smoking & reduce alcohol  
+        - 🩺 Schedule regular medical checkups  
         """)
+
     else:
         st.success("✅ Low Disease Risk")
-        st.write("Keep maintaining a healthy lifestyle! 💪")
+        st.balloons()
+        st.write("Keep maintaining a healthy lifestyle 🌱")
+
+    st.caption(
+        "⚠️ Disclaimer: This prediction is generated by a machine learning model and "
+        "is not a substitute for professional medical advice."
+    )
